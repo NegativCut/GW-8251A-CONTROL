@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>GW8251A_Control</AssemblyName>
+    <RootNamespace>GW8251A_Control</RootNamespace>
+    <Version>1.0.0</Version>
+    <Authors>NegativCut</Authors>
+    <Description>PC Control Application for GW Instek GDM-8251A Digital Multimeter</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.IO.Ports" Version="8.0.0" />
+  </ItemGroup>
+
+</Project>
