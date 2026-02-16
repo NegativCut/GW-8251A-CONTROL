@@ -5,6 +5,10 @@ public partial class MainForm : Form
     private readonly ScpiDevice _device = new();
     private System.Windows.Forms.Timer? _readTimer;
     private bool _continuousRead;
+    private StreamWriter? _csvWriter;
+    private bool _logging;
+    private int _logSampleCount;
+    private GraphForm? _graphForm;
 
     public MainForm()
     {
@@ -13,6 +17,11 @@ public partial class MainForm : Form
         RefreshPortList();
         cmbBaudRate.SelectedItem = "9600";
         cmbDetectionRate.SelectedItem = "Slow";
+
+        // Default CSV log path beside the exe
+        var logsDir = Path.Combine(AppContext.BaseDirectory, "Logs");
+        txtCsvPath.Text = logsDir;
+
         UpdateConnectionState();
     }
 
@@ -50,11 +59,11 @@ public partial class MainForm : Form
         grpAdvanced.Enabled = connected;
         grpCommand.Enabled = connected;
         grpLog.Enabled = connected;
+        grpDataLog.Enabled = connected;
         btnReadOnce.Enabled = connected;
         btnContinuousRead.Enabled = connected;
 
-        lblStatus.Text = connected ? $"Connected to {_device.PortName}" : "Disconnected";
-        lblStatus.ForeColor = connected ? Color.Green : Color.DarkGray;
+        Text = connected ? $"GW-8251A Control - {_device.PortName}" : "GW-8251A Control";
     }
 
     private void LogMessage(string message)
@@ -106,6 +115,7 @@ public partial class MainForm : Form
         if (_device.IsConnected)
         {
             StopContinuousRead();
+            if (_logging) StopLogging();
             _device.Disconnect();
             LogMessage("Disconnected");
         }
@@ -181,6 +191,22 @@ public partial class MainForm : Form
         var primary = _device.ReadPrimaryDisplay();
         var secondary = _device.ReadSecondaryDisplay();
         UpdateDisplay(primary, secondary);
+
+        // CSV logging
+        if (_logging && _csvWriter != null && primary != null)
+        {
+            _csvWriter.WriteLine($"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff},{primary},{secondary ?? ""}");
+            _csvWriter.Flush();
+            _logSampleCount++;
+            lblLogStatus.Text = $"Recording: {_logSampleCount} samples";
+        }
+
+        // Graph update
+        if (_graphForm != null && _graphForm.Visible && primary != null)
+        {
+            if (double.TryParse(primary, out double val))
+                _graphForm.AddDataPoint(val);
+        }
     }
 
     // Function selection buttons
@@ -275,16 +301,16 @@ public partial class MainForm : Form
         string selection = cmbSecDisplay.SelectedItem.ToString()!;
         switch (selection)
         {
-            case "Off":   _device.DisableSecondaryDisplay(); break;
-            case "DCV":   _device.ConfigureSecondaryDCVoltage(0); break;
-            case "ACV":   _device.ConfigureSecondaryACVoltage(0); break;
-            case "DCI":   _device.ConfigureSecondaryDCCurrent(0); break;
-            case "ACI":   _device.ConfigureSecondaryACCurrent(0); break;
-            case "2WΩ":   _device.ConfigureSecondaryResistance2W(0); break;
-            case "4WΩ":   _device.ConfigureSecondaryResistance4W(0); break;
-            case "Freq":  _device.ConfigureSecondaryFrequency(); break;
+            case "Off": _device.DisableSecondaryDisplay(); break;
+            case "DCV": _device.ConfigureSecondaryDCVoltage(0); break;
+            case "ACV": _device.ConfigureSecondaryACVoltage(0); break;
+            case "DCI": _device.ConfigureSecondaryDCCurrent(0); break;
+            case "ACI": _device.ConfigureSecondaryACCurrent(0); break;
+            case "2WΩ": _device.ConfigureSecondaryResistance2W(0); break;
+            case "4WΩ": _device.ConfigureSecondaryResistance4W(0); break;
+            case "Freq": _device.ConfigureSecondaryFrequency(); break;
             case "Period": _device.ConfigureSecondaryPeriod(); break;
-            case "Temp":  _device.ConfigureSecondaryTemperature(); break;
+            case "Temp": _device.ConfigureSecondaryTemperature(); break;
         }
     }
 
@@ -336,6 +362,13 @@ public partial class MainForm : Form
     private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
     {
         StopContinuousRead();
+        if (_logging) StopLogging();
+        if (_graphForm != null)
+        {
+            _graphForm.AllowClose = true;
+            _graphForm.Close();
+            _graphForm.Dispose();
+        }
         _device.Dispose();
     }
 
@@ -374,6 +407,97 @@ public partial class MainForm : Form
         _device.ActivateFunction("hold");
     }
 
+    // Data logging
+    private void btnBrowseCsv_Click(object sender, EventArgs e)
+    {
+        using var dialog = new FolderBrowserDialog();
+        dialog.SelectedPath = txtCsvPath.Text;
+        dialog.Description = "Select CSV log folder";
+        if (dialog.ShowDialog() == DialogResult.OK)
+            txtCsvPath.Text = dialog.SelectedPath;
+    }
+
+    private void btnLogCsv_Click(object sender, EventArgs e)
+    {
+        if (_logging)
+        {
+            StopLogging();
+        }
+        else
+        {
+            StartLogging();
+        }
+    }
+
+    private void StartLogging()
+    {
+        try
+        {
+            var dir = txtCsvPath.Text.Trim();
+            if (string.IsNullOrEmpty(dir))
+            {
+                MessageBox.Show("Please select a log folder", "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            Directory.CreateDirectory(dir);
+            var fileName = $"GDM8251A_{DateTime.Now:yyyy-MM-dd_HHmmss}.csv";
+            var filePath = Path.Combine(dir, fileName);
+
+            _csvWriter = new StreamWriter(filePath, false, System.Text.Encoding.UTF8);
+            _csvWriter.WriteLine("Timestamp,Primary,Secondary");
+            _csvWriter.Flush();
+
+            _logging = true;
+            _logSampleCount = 0;
+            btnLogCsv.Text = "Stop Logging";
+            btnLogCsv.BackColor = Color.DarkRed;
+            lblLogStatus.Text = $"Logging to: {fileName}";
+            lblLogStatus.ForeColor = Color.LimeGreen;
+            txtCsvPath.Enabled = false;
+            btnBrowseCsv.Enabled = false;
+
+            LogMessage($"CSV logging started: {filePath}");
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Failed to start logging: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+    }
+
+    private void StopLogging()
+    {
+        _logging = false;
+        _csvWriter?.Close();
+        _csvWriter = null;
+
+        btnLogCsv.Text = "Start Logging";
+        btnLogCsv.BackColor = SystemColors.ControlDarkDark;
+        lblLogStatus.Text = $"Stopped. {_logSampleCount} samples recorded.";
+        lblLogStatus.ForeColor = Color.DarkGray;
+        txtCsvPath.Enabled = true;
+        btnBrowseCsv.Enabled = true;
+
+        LogMessage($"CSV logging stopped. {_logSampleCount} samples recorded.");
+    }
+
+    private void btnGraph_Click(object sender, EventArgs e)
+    {
+        if (_graphForm == null || _graphForm.IsDisposed)
+        {
+            _graphForm = new GraphForm();
+        }
+
+        if (_graphForm.Visible)
+        {
+            _graphForm.BringToFront();
+        }
+        else
+        {
+            _graphForm.Show();
+        }
+    }
+
     #endregion
 
     private void grpAdvanced_Enter(object sender, EventArgs e)
@@ -382,6 +506,11 @@ public partial class MainForm : Form
     }
 
     private void cmbBaudRate_SelectedIndexChanged(object sender, EventArgs e)
+    {
+
+    }
+
+    private void MainForm_Load(object sender, EventArgs e)
     {
 
     }

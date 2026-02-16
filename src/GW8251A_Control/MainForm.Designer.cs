@@ -65,12 +65,20 @@ partial class MainForm
         grpLog = new GroupBox();
         txtLog = new TextBox();
         btnClearLog = new Button();
+        grpDataLog = new GroupBox();
+        btnLogCsv = new Button();
+        btnGraph = new Button();
+        lblCsvPath = new Label();
+        txtCsvPath = new TextBox();
+        btnBrowseCsv = new Button();
+        lblLogStatus = new Label();
         grpConnection.SuspendLayout();
         grpMeasurement.SuspendLayout();
         grpFunction.SuspendLayout();
         grpAdvanced.SuspendLayout();
         grpCommand.SuspendLayout();
         grpLog.SuspendLayout();
+        grpDataLog.SuspendLayout();
         SuspendLayout();
         // 
         // grpConnection
@@ -264,7 +272,7 @@ partial class MainForm
         grpFunction.Margin = new Padding(3, 4, 3, 4);
         grpFunction.Name = "grpFunction";
         grpFunction.Padding = new Padding(3, 4, 3, 4);
-        grpFunction.Size = new Size(1018, 160);
+        grpFunction.Size = new Size(682, 160);
         grpFunction.TabIndex = 2;
         grpFunction.TabStop = false;
         grpFunction.Text = "Function";
@@ -697,9 +705,90 @@ partial class MainForm
         btnClearLog.TabIndex = 1;
         btnClearLog.Text = "Clear";
         btnClearLog.Click += btnClearLog_Click;
-        // 
+        //
+        // grpDataLog
+        //
+        grpDataLog.Controls.Add(btnLogCsv);
+        grpDataLog.Controls.Add(btnGraph);
+        grpDataLog.Controls.Add(lblCsvPath);
+        grpDataLog.Controls.Add(txtCsvPath);
+        grpDataLog.Controls.Add(btnBrowseCsv);
+        grpDataLog.Controls.Add(lblLogStatus);
+        grpDataLog.ForeColor = SystemColors.ButtonFace;
+        grpDataLog.Location = new Point(700, 317);
+        grpDataLog.Margin = new Padding(3, 4, 3, 4);
+        grpDataLog.Name = "grpDataLog";
+        grpDataLog.Padding = new Padding(3, 4, 3, 4);
+        grpDataLog.Size = new Size(332, 160);
+        grpDataLog.TabIndex = 6;
+        grpDataLog.TabStop = false;
+        grpDataLog.Text = "Data Logging";
+        //
+        // lblCsvPath
+        //
+        lblCsvPath.Location = new Point(9, 24);
+        lblCsvPath.Name = "lblCsvPath";
+        lblCsvPath.Size = new Size(38, 27);
+        lblCsvPath.TabIndex = 0;
+        lblCsvPath.Text = "Path:";
+        //
+        // txtCsvPath
+        //
+        txtCsvPath.Location = new Point(50, 21);
+        txtCsvPath.Margin = new Padding(3, 4, 3, 4);
+        txtCsvPath.Name = "txtCsvPath";
+        txtCsvPath.Size = new Size(236, 27);
+        txtCsvPath.TabIndex = 1;
+        //
+        // btnBrowseCsv
+        //
+        btnBrowseCsv.Location = new Point(292, 20);
+        btnBrowseCsv.Margin = new Padding(3, 4, 3, 4);
+        btnBrowseCsv.Name = "btnBrowseCsv";
+        btnBrowseCsv.Size = new Size(30, 30);
+        btnBrowseCsv.TabIndex = 2;
+        btnBrowseCsv.Text = "...";
+        btnBrowseCsv.Click += btnBrowseCsv_Click;
+        //
+        // btnLogCsv
+        //
+        btnLogCsv.BackColor = SystemColors.ControlDarkDark;
+        btnLogCsv.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+        btnLogCsv.ForeColor = Color.Yellow;
+        btnLogCsv.Location = new Point(9, 60);
+        btnLogCsv.Margin = new Padding(3, 4, 3, 4);
+        btnLogCsv.Name = "btnLogCsv";
+        btnLogCsv.Size = new Size(150, 33);
+        btnLogCsv.TabIndex = 3;
+        btnLogCsv.Text = "Start Logging";
+        btnLogCsv.UseVisualStyleBackColor = false;
+        btnLogCsv.Click += btnLogCsv_Click;
+        //
+        // btnGraph
+        //
+        btnGraph.BackColor = SystemColors.ControlDarkDark;
+        btnGraph.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+        btnGraph.ForeColor = Color.Yellow;
+        btnGraph.Location = new Point(168, 60);
+        btnGraph.Margin = new Padding(3, 4, 3, 4);
+        btnGraph.Name = "btnGraph";
+        btnGraph.Size = new Size(150, 33);
+        btnGraph.TabIndex = 4;
+        btnGraph.Text = "Graph";
+        btnGraph.UseVisualStyleBackColor = false;
+        btnGraph.Click += btnGraph_Click;
+        //
+        // lblLogStatus
+        //
+        lblLogStatus.ForeColor = Color.DarkGray;
+        lblLogStatus.Location = new Point(9, 104);
+        lblLogStatus.Name = "lblLogStatus";
+        lblLogStatus.Size = new Size(313, 47);
+        lblLogStatus.TabIndex = 5;
+        lblLogStatus.Text = "Idle";
+        //
         // MainForm
-        // 
+        //
         AutoScaleDimensions = new SizeF(8F, 20F);
         AutoScaleMode = AutoScaleMode.Font;
         BackColor = SystemColors.ControlDarkDark;
@@ -710,6 +799,7 @@ partial class MainForm
         Controls.Add(grpAdvanced);
         Controls.Add(grpCommand);
         Controls.Add(grpLog);
+        Controls.Add(grpDataLog);
         FormBorderStyle = FormBorderStyle.FixedSingle;
         Margin = new Padding(3, 4, 3, 4);
         MaximizeBox = false;
@@ -717,6 +807,7 @@ partial class MainForm
         StartPosition = FormStartPosition.CenterScreen;
         Text = "GW-8251A Control";
         FormClosing += MainForm_FormClosing;
+        Load += MainForm_Load;
         grpConnection.ResumeLayout(false);
         grpMeasurement.ResumeLayout(false);
         grpFunction.ResumeLayout(false);
@@ -725,6 +816,8 @@ partial class MainForm
         grpCommand.PerformLayout();
         grpLog.ResumeLayout(false);
         grpLog.PerformLayout();
+        grpDataLog.ResumeLayout(false);
+        grpDataLog.PerformLayout();
         ResumeLayout(false);
     }
 
@@ -784,4 +877,12 @@ partial class MainForm
     private GroupBox grpLog;
     private TextBox txtLog;
     private Button btnClearLog;
+
+    private GroupBox grpDataLog;
+    private Button btnLogCsv;
+    private Button btnGraph;
+    private Label lblCsvPath;
+    private TextBox txtCsvPath;
+    private Button btnBrowseCsv;
+    private Label lblLogStatus;
 }
