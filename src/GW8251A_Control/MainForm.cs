@@ -11,6 +11,8 @@ public partial class MainForm : Form
         InitializeComponent();
         SetupEventHandlers();
         RefreshPortList();
+        cmbBaudRate.SelectedItem = "9600";
+        cmbDetectionRate.SelectedItem = "Slow";
         UpdateConnectionState();
     }
 
@@ -37,7 +39,7 @@ public partial class MainForm : Form
         bool connected = _device.IsConnected;
 
         btnConnect.Text = connected ? "Disconnect" : "Connect";
-        btnConnect.BackColor = connected ? Color.LightGreen : SystemColors.Control;
+        btnConnect.BackColor = connected ? Color.Green : SystemColors.ControlDarkDark;
 
         cmbPort.Enabled = !connected;
         cmbBaudRate.Enabled = !connected;
@@ -46,11 +48,13 @@ public partial class MainForm : Form
         grpMeasurement.Enabled = connected;
         grpFunction.Enabled = connected;
         grpAdvanced.Enabled = connected;
+        grpCommand.Enabled = connected;
+        grpLog.Enabled = connected;
         btnReadOnce.Enabled = connected;
         btnContinuousRead.Enabled = connected;
 
         lblStatus.Text = connected ? $"Connected to {_device.PortName}" : "Disconnected";
-        lblStatus.ForeColor = connected ? Color.Green : Color.Gray;
+        lblStatus.ForeColor = connected ? Color.Green : Color.DarkGray;
     }
 
     private void LogMessage(string message)
@@ -120,13 +124,16 @@ public partial class MainForm : Form
             {
                 LogMessage($"Connected to {port} at {baudRate} baud");
 
+                // Initialize: remote mode, reset to known state, clear status
+                _device.SetRemoteMode();
+                _device.Reset();
+                Thread.Sleep(6000);
+                _device.ClearStatus();
+
                 // Get device identity
                 var id = _device.GetIdentity();
                 if (id != null)
                     LogMessage($"Device: {id}");
-
-                // Enable remote mode
-                _device.SetRemoteMode();
             }
         }
         UpdateConnectionState();
@@ -147,7 +154,7 @@ public partial class MainForm : Form
         {
             _readTimer?.Start();
             btnContinuousRead.Text = "Stop";
-            btnContinuousRead.BackColor = Color.LightCoral;
+            btnContinuousRead.BackColor = Color.DarkGray;
         }
         else
         {
@@ -160,7 +167,7 @@ public partial class MainForm : Form
         _readTimer?.Stop();
         _continuousRead = false;
         btnContinuousRead.Text = "Continuous";
-        btnContinuousRead.BackColor = SystemColors.Control;
+        btnContinuousRead.BackColor = SystemColors.ControlDarkDark;
     }
 
     private void ReadTimer_Tick(object? sender, EventArgs e)
@@ -231,6 +238,54 @@ public partial class MainForm : Form
     private void btnTemp_Click(object sender, EventArgs e)
     {
         _device.ConfigureTemperature();
+    }
+
+    private void btnDCACV_Click(object sender, EventArgs e)
+    {
+        _device.ConfigureDCACVoltageAuto();
+        _device.SetAutoRange(true);
+    }
+
+    private void btnDCACI_Click(object sender, EventArgs e)
+    {
+        _device.ConfigureDCACCurrentAuto();
+        _device.SetAutoRange(true);
+    }
+
+    private void btnPeriod_Click(object sender, EventArgs e)
+    {
+        _device.ConfigurePeriod();
+    }
+
+    private void cmbTCType_SelectedIndexChanged(object sender, EventArgs e)
+    {
+        if (!_device.IsConnected || cmbTCType.SelectedItem == null) return;
+        char type = cmbTCType.SelectedItem.ToString()!.ToLower()[0];
+        _device.SetThermocoupleType(type);
+    }
+
+    private void cmbSecDisplay_SelectedIndexChanged(object sender, EventArgs e)
+    {
+    }
+
+    private void btnSetSecDisplay_Click(object sender, EventArgs e)
+    {
+        if (!_device.IsConnected || cmbSecDisplay.SelectedItem == null) return;
+
+        string selection = cmbSecDisplay.SelectedItem.ToString()!;
+        switch (selection)
+        {
+            case "Off":   _device.DisableSecondaryDisplay(); break;
+            case "DCV":   _device.ConfigureSecondaryDCVoltage(0); break;
+            case "ACV":   _device.ConfigureSecondaryACVoltage(0); break;
+            case "DCI":   _device.ConfigureSecondaryDCCurrent(0); break;
+            case "ACI":   _device.ConfigureSecondaryACCurrent(0); break;
+            case "2WΩ":   _device.ConfigureSecondaryResistance2W(0); break;
+            case "4WΩ":   _device.ConfigureSecondaryResistance4W(0); break;
+            case "Freq":  _device.ConfigureSecondaryFrequency(); break;
+            case "Period": _device.ConfigureSecondaryPeriod(); break;
+            case "Temp":  _device.ConfigureSecondaryTemperature(); break;
+        }
     }
 
     private void btnReset_Click(object sender, EventArgs e)
@@ -320,4 +375,14 @@ public partial class MainForm : Form
     }
 
     #endregion
+
+    private void grpAdvanced_Enter(object sender, EventArgs e)
+    {
+
+    }
+
+    private void cmbBaudRate_SelectedIndexChanged(object sender, EventArgs e)
+    {
+
+    }
 }

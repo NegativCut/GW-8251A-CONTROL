@@ -26,7 +26,7 @@ public class ScpiDevice : IDisposable
     /// <summary>
     /// Connect to the multimeter.
     /// </summary>
-    public bool Connect(string portName, int baudRate = 115200)
+    public bool Connect(string portName, int baudRate = 9600)
     {
         try
         {
@@ -45,6 +45,14 @@ public class ScpiDevice : IDisposable
             };
 
             _port.Open();
+
+            // Thoroughly flush any auto-trigger data the device is sending
+            for (int i = 0; i < 5; i++)
+            {
+                Thread.Sleep(100);
+                _port.DiscardInBuffer();
+            }
+
             return true;
         }
         catch (Exception ex)
@@ -85,6 +93,7 @@ public class ScpiDevice : IDisposable
 
         try
         {
+            _port.DiscardInBuffer();
             _port.WriteLine(command);
             CommandSent?.Invoke(this, command);
             return true;
@@ -109,11 +118,17 @@ public class ScpiDevice : IDisposable
 
         try
         {
+            // Flush any stale/in-flight data before sending
             _port.DiscardInBuffer();
+            Thread.Sleep(100);
+            _port.DiscardInBuffer();
+
             _port.WriteLine(command);
             CommandSent?.Invoke(this, command);
 
-            string response = _port.ReadLine().Trim();
+            // Device terminates responses with LF+CR (\n\r)
+            // ReadTo blocks until \r is found (end of response)
+            string response = _port.ReadTo("\r").Trim();
             ResponseReceived?.Invoke(this, response);
             return response;
         }
@@ -173,6 +188,7 @@ public class ScpiDevice : IDisposable
     public bool ConfigureACVoltage(double range) => SendCommand($"conf:volt:ac {range}");
     public bool ConfigureACVoltageAuto() => SendCommand("conf:volt:ac min");
     public bool ConfigureDCACVoltage(double range) => SendCommand($"conf:volt:dcac {range}");
+    public bool ConfigureDCACVoltageAuto() => SendCommand("conf:volt:dcac min");
 
     // Current
     public bool ConfigureDCCurrent(double range) => SendCommand($"conf:curr:dc {range}");
@@ -180,6 +196,7 @@ public class ScpiDevice : IDisposable
     public bool ConfigureACCurrent(double range) => SendCommand($"conf:curr:ac {range}");
     public bool ConfigureACCurrentAuto() => SendCommand("conf:curr:ac min");
     public bool ConfigureDCACCurrent(double range) => SendCommand($"conf:curr:dcac {range}");
+    public bool ConfigureDCACCurrentAuto() => SendCommand("conf:curr:dcac min");
 
     // Resistance
     public bool ConfigureResistance2W(double range) => SendCommand($"conf:res {range}");
